@@ -29,6 +29,31 @@ impl Emulator {
 
         emu
     }
+
+    fn mov_r32_imm32(&mut self) {}
+
+    fn short_jump(&mut self) {}
+
+    fn get_code8(&self, index: i32) -> u8 {
+        self.memory[(self.eip + index as u32) as usize]
+    }
+}
+
+type InstructionFunc = [Option<fn(&mut Emulator)>; 256];
+
+trait New {
+    fn new() -> InstructionFunc;
+}
+impl New for InstructionFunc {
+    fn new() -> InstructionFunc {
+        let mut instructions: InstructionFunc = [None; 256];
+        for i in 0..8 {
+            instructions[0xB8 + i] = Some(Emulator::mov_r32_imm32);
+        }
+        instructions[0xEB] = Some(Emulator::short_jump);
+
+        instructions
+    }
 }
 
 fn main() {
@@ -41,4 +66,22 @@ fn main() {
 
     let mut file = File::open(file_name).expect("File not found");
     file.read_to_end(&mut emu.memory).expect("Cannot read buf");
+
+    let instructions = InstructionFunc::new();
+
+    while emu.eip < MEMORY_SIZE as u32 {
+        let code = emu.get_code8(0) as usize;
+
+        if let Some(f) = instructions[code] {
+            f(&mut emu);
+        } else {
+            println!("Not implemented");
+            break;
+        }
+
+        if emu.eip == 0x0000 {
+            println!("end of program");
+            break;
+        }
+    }
 }
